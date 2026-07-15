@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftyFive — UX Copywriter (Agente E)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --bg:#060607; --surface:#111214; --surface-2:#17181b; --surface-3:#1e2124;
+    --border:#2a2c30; --border-soft:#1c1e21; --text:#f5f6f7; --text-dim:#9a9da3; --text-faint:#5c5f63;
+    --brand:#2170db; --brand-soft:#132846;
+    --teal:#33c9a7; --teal-soft:#12312a;
+    --coral:#f2645a; --coral-soft:#3a1c1a;
+    --amber:#e0a22c; --amber-soft:#332708;
+    --purple:#a675e0; --purple-soft:#231633;
+    --accent2:#5b9df9; --accent2-soft:#122540;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap{max-width:1080px; margin:0 auto; padding:36px 24px 80px;}
+  header{margin-bottom:28px;}
+  .brand-row{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+  .brand-badge{width:34px; height:34px; border-radius:9px; background:var(--brand); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px;}
+  .brand-name{font-weight:700; font-size:15px;}
+  .brand-sub{font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.8px;}
+  .eyebrow{font-size:11.5px; color:var(--teal); text-transform:uppercase; letter-spacing:0.8px; font-weight:600;}
+  h1{font-size:28px; margin:6px 0 8px;}
+  .lead{color:var(--text-dim); font-size:14.5px; max-width:760px; line-height:1.5;}
+  .painbox{background:linear-gradient(160deg, var(--teal-soft), transparent); border:1px solid var(--teal); border-radius:12px; padding:16px 20px; margin-top:18px;}
+  .painbox .t{font-size:10.5px; color:var(--teal); text-transform:uppercase; letter-spacing:0.6px; font-weight:700;}
+  .painbox p{margin:8px 0 0; font-size:13px; color:var(--text); line-height:1.5;}
+
+  .section-divider{display:flex; align-items:center; gap:14px; margin:44px 0 20px;}
+  .section-divider .num{width:26px; height:26px; border-radius:7px; background:var(--brand); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .section-divider .txt h2{font-size:17px; margin:0;}
+  .section-divider .txt p{font-size:12px; color:var(--text-faint); margin:2px 0 0;}
+  .section-divider hr{flex:1; border:none; border-top:1px solid var(--border);}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px; margin-bottom:20px;}
+  .card h3{font-size:16px; margin:0 0 4px;}
+  .card-sub{color:var(--text-dim); font-size:12.5px; margin-bottom:16px; line-height:1.5;}
+  label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;}
+  input[type=text], textarea{
+    width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-size:13.5px; font-family:inherit; margin-bottom:14px;
+  }
+  textarea{resize:vertical; min-height:70px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 16px;}
+  @media (max-width:640px){.grid2, .grid3{grid-template-columns:1fr;}}
+
+  .btn{ background:var(--brand); color:#fff; border:none; border-radius:9px; padding:11px 18px; font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn.secondary{background:var(--surface-3); color:var(--text);}
+  .note{font-size:11.5px; color:var(--text-faint); margin-top:8px; line-height:1.5;}
+  .status{font-size:13px; padding:10px 14px; border-radius:8px; margin-top:14px;}
+  .status.error{background:var(--coral-soft); color:var(--coral); border:1px solid var(--coral);}
+  .status.info{background:var(--brand-soft); color:var(--accent2); border:1px solid var(--brand);}
+  .status.ok{background:var(--teal-soft); color:var(--teal); border:1px solid var(--teal);}
+  .spinner{width:16px; height:16px; border:2px solid rgba(255,255,255,0.25); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .fuente-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:760px){.fuente-grid{grid-template-columns:1fr;}}
+  .fuente-block{background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:16px;}
+  .fuente-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .fuente-block h4{font-size:13px; margin:0;}
+  .fuente-tag{font-size:9.5px; padding:2px 8px; border-radius:100px; white-space:nowrap;}
+  .fuente-tag.opcional{color:var(--text-faint); background:var(--surface-3);}
+  .fuente-tag.recomendado{color:var(--amber); background:var(--amber-soft);}
+  .fuente-block .fuente-sub{font-size:11.5px; color:var(--text-dim); margin-bottom:12px; line-height:1.5;}
+  .file-btn-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .file-name{font-size:12px; color:var(--teal);}
+  .file-btn-row input[type=file]{display:none;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px;}
+  @media (max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+  .kpi-card{background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
+  .kpi-card .kpi-label{font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.4px;}
+  .kpi-card .kpi-value{font-family:monospace; font-size:18px; font-weight:700; margin-top:4px;}
+  .kpi-card .kpi-note{font-size:10px; color:var(--text-faint); margin-top:2px;}
+
+  .confianza-chip{font-size:10px; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:100px;}
+  .confianza-chip.alta{color:var(--teal); background:var(--teal-soft);}
+  .confianza-chip.media{color:var(--amber); background:var(--amber-soft);}
+  .confianza-chip.baja{color:var(--coral); background:var(--coral-soft);}
+  .confianza-chip.sindatos{color:var(--text-faint); background:var(--surface-3);}
+
+  .insight-list{display:flex; flex-direction:column; gap:12px;}
+  .insight-row{background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px 16px;}
+  .insight-top{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; flex-wrap:wrap;}
+  .insight-name{font-size:13.5px; font-weight:700;}
+  .insight-pct{font-family:monospace; font-size:14px; font-weight:800; color:var(--teal);}
+  .insight-track{height:7px; background:var(--surface-3); border-radius:5px; overflow:hidden; margin-bottom:8px;}
+  .insight-fill{height:100%; border-radius:5px; background:var(--teal);}
+  .insight-row.negativo .insight-pct{color:var(--coral);}
+  .insight-row.negativo .insight-fill{background:var(--coral);}
+  .insight-src{font-size:11px; color:var(--text-faint);}
+  .insight-src b{color:var(--text-dim); font-weight:600;}
+
+  .retailer-card{background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:16px;}
+  .retailer-top{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+  .retailer-name{font-size:14.5px; font-weight:700;}
+  .align-chip{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; padding:3px 10px; border-radius:100px; color:var(--teal); background:var(--teal-soft);}
+
+  .copy-field{margin-bottom:14px;}
+  .copy-field:last-child{margin-bottom:0;}
+  .copy-field .cf-label{font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; margin-bottom:8px;}
+  .copy-option{background:var(--surface); border:1px solid var(--border-soft); border-radius:9px; padding:12px 14px; margin-bottom:8px;}
+  .copy-option:last-child{margin-bottom:0;}
+  .co-text{font-size:14px; font-weight:600; color:var(--text); line-height:1.4;}
+  .co-rationale{font-size:11.5px; color:var(--text-dim); line-height:1.55; margin-top:6px;}
+  .co-rationale b{color:var(--text);}
+  .single-line{background:var(--surface); border:1px solid var(--border-soft); border-radius:9px; padding:12px 14px; font-size:13.5px; color:var(--text); line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand-row">
+      <div class="brand-badge">L5</div>
+      <div>
+        <div class="brand-name">LiftyFive</div>
+        <div class="brand-sub">AI-First Retail Media</div>
+      </div>
+    </div>
+    <span class="eyebrow">Método LiftyFive · Agente E</span>
+    <h1>UX Copywriter — Mensajes de Conversión</h1>
+    <p class="lead">Lee las reviews reales de tus clientes en tu e-commerce propio, Mercado Libre, Amazon y otras plataformas para identificar qué es lo que más valoran, y usa esos insights como base del copy de banners, descripciones de Brand Store y títulos de imagen — alineado al objetivo de campaña y, si hace falta, adaptado al estilo de cada retailer.</p>
+    <div class="painbox">
+      <div class="t">Dolor que resuelve</div>
+      <p>Los banners y descripciones de Brand Store muchas veces se escriben en base a lo que el equipo de marketing cree que el cliente valora, no en base a lo que el cliente efectivamente dice en sus reviews. Este agente ancla el mensaje en insights reales — así el copy conecta con lo que de verdad mueve la decisión de compra.</p>
+    </div>
+  </header>
+
+  <div class="section-divider">
+    <div class="num">1</div>
+    <div class="txt"><h2>Configuración y fuentes de datos</h2><p>Cuantas más plataformas de reviews sumes, más confiable el insight.</p></div>
+    <hr>
+  </div>
+
+  <div class="card">
+    <h3>Datos de campaña</h3>
+    <div class="card-sub">Define el objetivo y el alcance del copy que se va a generar.</div>
+    <div class="grid3">
+      <div><label>Cliente</label><input type="text" id="e-cliente" placeholder="Ej: San Fernando"></div>
+      <div><label>Producto o línea a promocionar</label><input type="text" id="e-producto" placeholder="Ej: Línea de congelados"></div>
+      <div><label>Objetivo de la campaña</label><input type="text" id="e-objetivo" placeholder="Ej: Conversión, awareness, lanzamiento..."></div>
+    </div>
+    <div class="grid2">
+      <div><label>Retailers objetivo (separados por coma)</label><input type="text" id="e-retailers" placeholder="Ej: Mercado Libre, Amazon — dejar vacío para creativo genérico"></div>
+      <div><label>Creativo base a reversionar (opcional)</label><textarea id="e-creativo-base" placeholder="Pegá acá el copy actual si el pedido es adaptar una pieza ya existente, en vez de crear desde cero"></textarea></div>
+    </div>
+    <div class="note">Si cargás retailers específicos, el agente arma copy adaptado al estilo de cada uno. Si dejás el campo vacío, arma una sola pieza flexible pensada para reversionar después en cualquier canal.</div>
+  </div>
+
+  <div class="card">
+    <h3>Fuentes de datos</h3>
+    <div class="card-sub">Cualquier formato (CSV, XLSX, PDF, TXT). Todo opcional salvo tener al menos una fuente de reviews con texto — sin eso el agente no tiene de dónde sacar el insight real.</div>
+    <div class="fuente-grid">
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Reviews de la tienda propia</h4><span class="fuente-tag recomendado">Recomendado</span></div>
+        <div class="fuente-sub">Export con el texto de cada review (y rating si lo tenés). Es la fuente más directa — el cliente que reseña ahí ya te compró a vos.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-reviewsPropias">Adjuntar archivo(s)</label>
+          <input type="file" id="file-reviewsPropias" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'reviewsPropias')">
+          <span class="file-name" id="name-reviewsPropias"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Reviews de Mercado Libre</h4><span class="fuente-tag opcional">Puede faltar</span></div>
+        <div class="fuente-sub">Export de las reviews de la publicación. También sirve un TXT con una review pegada por línea.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-reviewsML">Adjuntar archivo(s)</label>
+          <input type="file" id="file-reviewsML" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'reviewsML')">
+          <span class="file-name" id="name-reviewsML"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Reviews de Amazon</h4><span class="fuente-tag opcional">Puede faltar</span></div>
+        <div class="fuente-sub">Mismo criterio que Mercado Libre: export o texto de las reviews del producto.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-reviewsAmazon">Adjuntar archivo(s)</label>
+          <input type="file" id="file-reviewsAmazon" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'reviewsAmazon')">
+          <span class="file-name" id="name-reviewsAmazon"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Reviews de apps</h4><span class="fuente-tag opcional">Si aplica</span></div>
+        <div class="fuente-sub">Solo si el producto o la marca tiene una app propia con reviews de usuarios (App Store / Google Play).</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-reviewsApp">Adjuntar archivo(s)</label>
+          <input type="file" id="file-reviewsApp" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'reviewsApp')">
+          <span class="file-name" id="name-reviewsApp"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Comentarios en redes sociales</h4><span class="fuente-tag opcional">Puede faltar</span></div>
+        <div class="fuente-sub">Comentarios en posts orgánicos o pauta — a veces aparecen menciones espontáneas que no están en ninguna review formal.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-redesSociales">Adjuntar archivo(s)</label>
+          <input type="file" id="file-redesSociales" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'redesSociales')">
+          <span class="file-name" id="name-redesSociales"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Brief de campaña y lineamientos de marca</h4><span class="fuente-tag recomendado">Recomendado</span></div>
+        <div class="fuente-sub">Tono de voz, mensajes obligatorios o prohibidos (ej. claims regulados). Sin esto el agente usa un tono neutro por defecto.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-briefCampana">Adjuntar archivo</label>
+          <input type="file" id="file-briefCampana" accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'briefCampana')">
+          <span class="file-name" id="name-briefCampana"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Specs de retailer</h4><span class="fuente-tag opcional">Puede faltar</span></div>
+        <div class="fuente-sub">Dimensiones de banner, límite de caracteres, guidelines de Brand Store de tu cuenta. Sin esto el agente usa formatos estándar genéricos.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-specsRetailer">Adjuntar archivo</label>
+          <input type="file" id="file-specsRetailer" accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'specsRetailer')">
+          <span class="file-name" id="name-specsRetailer"></span>
+        </div>
+      </div>
+      <div class="fuente-block">
+        <div class="fuente-top"><h4>Perfil de consumidor (Agente F)</h4><span class="fuente-tag opcional">Puede faltar</span></div>
+        <div class="fuente-sub">Si ya corriste Agente F para este cliente, subí acá el perfil exportado para que el copy se alinee al tono del público objetivo. Por ahora la reutilización automática entre agentes todavía no está conectada — hay que subir el archivo directo.</div>
+        <div class="file-btn-row">
+          <label class="btn secondary" for="file-perfilConsumidor">Adjuntar archivo</label>
+          <input type="file" id="file-perfilConsumidor" accept=".csv,.xlsx,.xls,.pdf,.txt,.md" onchange="cargarArchivos(event,'perfilConsumidor')">
+          <span class="file-name" id="name-perfilConsumidor"></span>
+        </div>
+      </div>
+    </div>
+    <div class="note">El entregable te va a mostrar de qué plataforma sale cada porcentaje, y qué tan grande es la muestra detrás de cada insight.</div>
+    <button class="btn" id="btn-procesar" style="margin-top:14px;" type="button" onclick="procesar()">Generar copy</button>
+    <div id="status-area"></div>
+  </div>
+
+  <div id="resultado-area"></div>
+</div>
+
+<script>
+const archivosCargados = {};
+
+function cargarArchivos(event, tipo){
+  const files = Array.from(event.target.files || []);
+  if(!files.length) return;
+  const maxMB = 6;
+  const validos = [];
+  for(const file of files){
+    if(file.size > maxMB * 1024 * 1024){
+      alert(`"${file.name}" supera ${maxMB}MB. Probá con un recorte más chico.`);
+      continue;
+    }
+    validos.push(file);
+  }
+  if(!validos.length) return;
+  archivosCargados[tipo] = archivosCargados[tipo] || [];
+  let pendientes = validos.length;
+  validos.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      archivosCargados[tipo].push({ nombre: file.name, base64: e.target.result });
+      pendientes--;
+      if(pendientes === 0){
+        document.getElementById('name-'+tipo).innerText = archivosCargados[tipo].map(a=>a.nombre).join(', ');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+const TIPOS_REVIEWS = ['reviewsPropias','reviewsML','reviewsAmazon','reviewsApp','redesSociales'];
+
+async function procesar(){
+  const hayReviews = TIPOS_REVIEWS.some(t => (archivosCargados[t] || []).length > 0);
+  if(!hayReviews){
+    alert('Necesito al menos una fuente de reviews (tienda propia, Mercado Libre, Amazon, app o redes) para poder generar copy anclado en insights reales.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-procesar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Leyendo reviews y armando el copy…';
+  document.getElementById('status-area').innerHTML = '<div class="status info">Clasificando reviews y redactando copy. Puede tardar hasta un minuto.</div>';
+  document.getElementById('resultado-area').innerHTML = '';
+
+  const archivos = [];
+  Object.entries(archivosCargados).forEach(([tipo, lista]) => {
+    lista.forEach(a => archivos.push({ tipo, nombre: a.nombre, base64: a.base64 }));
+  });
+
+  const payload = {
+    cliente: document.getElementById('e-cliente').value.trim(),
+    producto: document.getElementById('e-producto').value.trim(),
+    objetivoCampana: document.getElementById('e-objetivo').value.trim(),
+    retailersObjetivo: document.getElementById('e-retailers').value.trim(),
+    creativoBase: document.getElementById('e-creativo-base').value.trim(),
+    archivos
+  };
+
+  try{
+    const r = await fetch('/api/copywriter', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+
+    if(!r.ok){
+      document.getElementById('status-area').innerHTML = `<div class="status error">${data.error || 'Error generando el copy.'}</div>`;
+    } else {
+      document.getElementById('status-area').innerHTML = '<div class="status ok">Listo. Copy generado.</div>';
+      renderResultado(data);
+    }
+  } catch(e){
+    document.getElementById('status-area').innerHTML = `<div class="status error">Error de red: ${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Generar copy';
+}
+
+function renderResultado(data){
+  const temas = data.temas || [];
+  const copy = data.copy || {};
+  const cobertura = data.cobertura || {};
+  const retailersKeys = Object.keys(copy);
+
+  const insightPrincipal = temas[0];
+  const piezasGeneradas = retailersKeys.reduce((s, k) => s + (copy[k].titulos_banner ? copy[k].titulos_banner.length : 0) + (copy[k].brand_store_desc ? 1 : 0) + (copy[k].titulo_imagen ? 1 : 0), 0);
+
+  const kpisHtml = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Reviews analizadas</div><div class="kpi-value">${data.totalReviewsAnalizadas ?? 0}</div><div class="kpi-note">de ${data.totalReviewsCargadas ?? 0} cargadas</div></div>
+      <div class="kpi-card"><div class="kpi-label">Insight principal</div><div class="kpi-value" style="font-size:14px;">${insightPrincipal ? insightPrincipal.nombre : 'n/d'}</div><div class="kpi-note">${insightPrincipal ? insightPrincipal.pct + '% de las menciones' : ''}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Retailers cubiertos</div><div class="kpi-value">${retailersKeys.length}</div><div class="kpi-note">${(data.retailers||[]).map(r=>r.nombre).join(', ')}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Piezas generadas</div><div class="kpi-value">${piezasGeneradas}</div><div class="kpi-note">Banner, Brand Store, título</div></div>
+    </div>`;
+
+  const nivelClass = (cobertura.nivel || 'sindatos').replace(' ', '');
+  const coberturaHtml = `
+    <div class="card">
+      <h3>Cobertura de este análisis</h3>
+      <div class="card-sub" style="margin-bottom:10px;">Calculada según cuántas fuentes reales de reviews se pudieron leer.</div>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px; flex-wrap:wrap;">
+        <span class="confianza-chip ${nivelClass}">Cobertura: ${cobertura.nivel || 'sin datos'} (${cobertura.score ?? 0}%)</span>
+        <span style="font-size:12px; color:var(--text-dim);">${(cobertura.plataformasConDatos||[]).join(', ') || 'sin plataformas con datos'}</span>
+      </div>
+      <div class="note" style="margin-top:0;"><b style="color:var(--text);">Cómo mejorar la lectura:</b> ${cobertura.comoMejorar || ''}</div>
+    </div>`;
+
+  const insightsHtml = temas.length ? `
+    <div class="card">
+      <h3>Lo que más valoran tus clientes, según sus propias palabras</h3>
+      <div class="card-sub">Insights ordenados por frecuencia de mención real en las reviews cargadas.</div>
+      <div class="insight-list">
+        ${temas.map(t => `
+          <div class="insight-row ${t.sentimiento === 'negativo' ? 'negativo' : ''}">
+            <div class="insight-top"><span class="insight-name">${t.sentimiento === 'negativo' ? '⚠ ' : ''}${t.nombre}</span><span class="insight-pct">${t.pct}%</span></div>
+            <div class="insight-track"><div class="insight-fill" style="width:${Math.min(t.pct,100)}%;"></div></div>
+            <div class="insight-src">${t.menciones} review(s) · ${t.citaPlataforma ? ('mencionado en <b>' + t.citaPlataforma + '</b>') : ''}${t.citaTexto ? (' · ej. "' + t.citaTexto.slice(0,140) + '"') : ''}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : `<div class="card"><h3>Lo que más valoran tus clientes</h3><div class="note" style="margin-top:0;">No se detectaron patrones claros con las reviews cargadas — sumá más fuentes para poder identificar insights confiables.</div></div>`;
+
+  const retailersHtml = retailersKeys.map(key => {
+    const r = copy[key];
+    const titulosHtml = (r.titulos_banner || []).map(tb => `
+      <div class="copy-option">
+        <div class="co-text">${tb.texto}</div>
+        <div class="co-rationale"><b>Por qué:</b> ${tb.razon || ''}${tb.tema_nombre ? ` — basado en "${tb.tema_nombre}" (${tb.tema_pct}% de las reviews analizadas).` : ''}</div>
+      </div>`).join('');
+    return `
+    <div class="retailer-card">
+      <div class="retailer-top">
+        <div class="retailer-name">${r.nombre}</div>
+        <span class="align-chip">Copy generado</span>
+      </div>
+      <div class="copy-field">
+        <div class="cf-label">Título de banner — opciones</div>
+        ${titulosHtml}
+      </div>
+      ${r.brand_store_desc ? `<div class="copy-field"><div class="cf-label">Descripción de Brand Store</div><div class="single-line">${r.brand_store_desc}</div></div>` : ''}
+      ${r.titulo_imagen ? `<div class="copy-field"><div class="cf-label">Título de imagen (overlay)</div><div class="single-line">${r.titulo_imagen}</div></div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('resultado-area').innerHTML = `
+    <div class="section-divider">
+      <div class="num">2</div>
+      <div class="txt"><h2>Entregable</h2><p>Insights y copy generados sobre tus fuentes reales.</p></div>
+      <hr>
+    </div>
+    <div class="pdf-toolbar" style="margin-bottom:14px;">
+      <button class="btn secondary" onclick="descargarPDF()" type="button">Descargar informe en PDF</button>
+    </div>
+    <div id="resultado-pdf-content">
+      <div class="card">
+        <h3>Resumen ejecutivo</h3>
+        <div class="note" style="margin-top:0;">${data.resumen_ejecutivo || ''}</div>
+      </div>
+      ${kpisHtml}
+      ${coberturaHtml}
+      ${insightsHtml}
+      <div class="section-divider">
+        <div class="num">3</div>
+        <div class="txt"><h2>Copy generado por retailer</h2><p>Cada pieza está atada a un insight real.</p></div>
+        <hr>
+      </div>
+      ${retailersHtml}
+    </div>
+  `;
+}
+
+function descargarPDF(){
+  const el = document.getElementById('resultado-pdf-content');
+  if(!el){ alert('No hay ningún resultado generado todavía.'); return; }
+  const nombreCliente = (document.getElementById('e-cliente').value.trim() || 'cliente')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  const fecha = new Date().toISOString().slice(0,10);
+  const opciones = {
+    margin: 10,
+    filename: `agente-e-${nombreCliente || 'cliente'}-${fecha}.pdf`,
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: { scale: 2, backgroundColor: '#060607' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+  html2pdf().set(opciones).from(el).save();
+}
+</script>
+</body>
+</html>
