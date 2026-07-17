@@ -28,6 +28,12 @@ const MAX_TEMAS = 8;
 const MAX_LINKS = 8;
 const LINK_TIMEOUT_MS = 12000;
 const CLAUDE_TIMEOUT_MS = 65000;
+// Fotos, capturas de pantalla, screenshots de reviews, etc. Se procesan
+// con Claude Vision (no OCR aparte) para transcribir el texto legible antes
+// de entrar al mismo pipeline que cualquier otro documento de texto.
+const EXT_IMAGEN = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+const MAX_IMAGENES = 6;
+const IMAGE_TIMEOUT_MS = 25000;
 
 /* ================= PARSERS (archivos) ================= */
 
@@ -73,19 +79,96 @@ async function parseOfficeDoc(buffer, nombreArchivo, ext, textCap) {
   } catch (e) { return { error: `No se pudo leer "${nombreArchivo}" (${ext}): ${e.message}` }; }
 }
 
+// Transcribe una imagen (foto de documento, captura de pantalla de reviews,
+// etc.) con Claude Vision. No inventa datos: solo transcribe lo que se lee.
+// El resultado se reinyecta como texto plano al mismo pipeline que usa
+// cualquier otro archivo — si viene de una categoría de reviews, cada línea
+// termina siendo tratada como una review individual (misma lógica que un
+// TXT); si viene de una categoría de contexto, se suma como texto de apoyo.
+async function transcribirImagen(base64Puro, mediaType, nombreArchivo, apiKey) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Puro } },
+            { type: 'text', text: 'Transcribí TODO el texto legible de esta imagen tal cual aparece, sin resumir, sin interpretar y sin agregar comentarios tuyos. Si ves varias reseñas, comentarios o mensajes de distintas personas (por ejemplo, una captura de pantalla de reviews), escribí cada uno en una línea separada, uno por línea. Si es un documento único (ficha técnica, brief, spec, etc.), transcribí su contenido manteniendo el orden. Si la imagen no tiene texto legible, respondé exactamente: SIN_TEXTO.' }
+          ]
+        }]
+      })
+    });
+    const data = await r.json();
+    if (!r.ok) return { error: data?.error?.message || `No se pudo leer la imagen "${nombreArchivo}".` };
+    const bloque = (data?.content || []).find(b => b.type === 'text');
+    const texto = (bloque?.text || '').trim();
+    if (!texto || texto === 'SIN_TEXTO') return { error: `No se detectó texto legible en "${nombreArchivo}".` };
+    return { texto };
+  } catch (e) {
+    if (e.name === 'AbortError') return { error: `"${nombreArchivo}" tardó demasiado en procesarse (imagen muy compleja o pesada).` };
+    return { error: `No se pudo leer "${nombreArchivo}": ${e.message}` };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function mediaTypeDesdeExtension(ext) {
+  const mapa = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
+  return mapa[ext] || 'image/jpeg';
+}
+
+// Todas las imágenes de la corrida se transcriben en paralelo, una sola vez,
+// antes de armar reviews y bloques de contexto — así el costo en tiempo es
+// el de la imagen más lenta, no la suma de todas.
+async function transcribirImagenesEnParalelo(archivos, apiKey) {
+  const candidatas = archivos
+    .map((a, idx) => ({ ...a, _idx: idx }))
+    .filter(a => EXT_IMAGEN.includes((a.nombre || '').split('.').pop().toLowerCase()))
+    .slice(0, MAX_IMAGENES);
+
+  const resultados = await Promise.all(candidatas.map(async (a) => {
+    const ext = (a.nombre || '').split('.').pop().toLowerCase();
+    const mediaType = mediaTypeDesdeExtension(ext);
+    const base64Puro = String(a.base64).split(',').pop();
+    const r = await transcribirImagen(base64Puro, mediaType, a.nombre, apiKey);
+    return { idx: a._idx, ...r };
+  }));
+
+  const mapa = new Map();
+  resultados.forEach(r => mapa.set(r.idx, r));
+  return mapa;
+}
+
 // textCap: los documentos de contexto (brief, specs, producto) usan
 // MAX_TEXTO_LARGO porque son texto de apoyo. Las fuentes de reviews en
 // TXT/MD/PDF usan un cap mucho más grande (MAX_TEXTO_REVIEWS) porque ahí sí
 // son los datos primarios del análisis.
-async function parseArchivo(archivo, textCap = MAX_TEXTO_LARGO) {
+async function parseArchivo(archivo, textCap = MAX_TEXTO_LARGO, imagenesMapa = null) {
   const nombre = archivo.nombre || 'archivo';
   const ext = (nombre.split('.').pop() || '').toLowerCase();
+
+  if (EXT_IMAGEN.includes(ext)) {
+    const pre = imagenesMapa && imagenesMapa.get(archivo._idx);
+    if (pre && pre.texto) return { kind: 'texto', nombre, texto: pre.texto.slice(0, textCap) };
+    return { kind: 'desconocido', nombre, error: (pre && pre.error) || `No se pudo procesar la imagen "${nombre}".` };
+  }
+  if (ext === 'doc') {
+    return { kind: 'desconocido', nombre, error: `El formato .doc (Word 97-2003) no se puede leer directamente. Abrilo en Word y usá "Guardar como" → .docx, o exportalo a PDF, y volvé a subirlo.` };
+  }
+
   const buffer = bufferDesdeBase64(archivo.base64);
   if (['csv', 'xlsx', 'xls'].includes(ext)) return { kind: 'tabular', nombre, ...parseTabular(buffer, nombre) };
   if (ext === 'pdf') return { kind: 'texto', nombre, ...(await parsePDF(buffer, nombre, textCap)) };
   if (['txt', 'md', 'json'].includes(ext)) return { kind: 'texto', nombre, texto: buffer.toString('utf-8').slice(0, textCap) };
   if (['docx', 'pptx', 'odt', 'odp', 'ods', 'rtf'].includes(ext)) return { kind: 'texto', nombre, ...(await parseOfficeDoc(buffer, nombre, ext, textCap)) };
-  return { kind: 'desconocido', nombre, error: `Formato de "${nombre}" no reconocido — probá CSV, XLSX, PDF, Word, PowerPoint, TXT o MD.` };
+  return { kind: 'desconocido', nombre, error: `Formato de "${nombre}" no reconocido — probá CSV, XLSX, PDF, Word (.docx), PowerPoint, imágenes (JPG/PNG), TXT o MD.` };
 }
 
 /* ================= PARSER DE LINKS (páginas de venta / reseñas) ================= */
@@ -358,8 +441,17 @@ module.exports = async (req, res) => {
   catch (e) { res.status(400).json({ error: 'Body inválido.' }); return; }
 
   const { cliente, producto, objetivoCampana, retailersObjetivo, creativoBase, archivos = [], links = [] } = body || {};
+  // Índice estable por archivo, para poder mapear resultados de la
+  // transcripción de imágenes (hecha en paralelo, una sola vez) de vuelta a
+  // cada archivo original sin importar en qué categoría esté.
+  archivos.forEach((a, idx) => { a._idx = idx; });
 
   try {
+    // --- Imágenes (fotos, capturas de pantalla): se transcriben todas en
+    // paralelo antes de armar reviews y contexto, para no pagar el costo en
+    // tiempo de cada una por separado. ---
+    const imagenesMapa = await transcribirImagenesEnParalelo(archivos, apiKey);
+
     // --- Reviews por plataforma (archivos exportados) ---
     const tiposReviews = ['reviewsPropias', 'reviewsML', 'reviewsAmazon', 'reviewsApp', 'redesSociales'];
     let reviewsRaw = [];
@@ -371,7 +463,7 @@ module.exports = async (req, res) => {
       if (!archivosTipo.length) continue;
       let count = 0;
       for (const archivo of archivosTipo) {
-        const parsed = await parseArchivo(archivo, MAX_TEXTO_REVIEWS);
+        const parsed = await parseArchivo(archivo, MAX_TEXTO_REVIEWS, imagenesMapa);
         if (parsed.error) { fuentesResumen.push({ plataforma, nombre: archivo.nombre, usada: false, detalle: parsed.error }); continue; }
         if (parsed.kind === 'tabular') {
           const mapping = detectarColumnasReviews(parsed.headers);
@@ -427,19 +519,25 @@ module.exports = async (req, res) => {
     const plataformasFaltantes = Object.values(TIPO_A_PLATAFORMA).filter(p => !plataformasConDatos.includes(p));
 
     // --- Documentos de contexto (texto) ---
-    async function textoDe(files) {
+    async function textoDe(files, plataformaLabel) {
       let acumulado = '';
       for (const f of files) {
-        const p = await parseArchivo(f);
-        if (p.kind === 'texto' && p.texto) acumulado += `\n--- ${f.nombre} ---\n${p.texto}`;
-        else if (p.kind === 'tabular') acumulado += `\n--- ${f.nombre} (planilla) ---\n${JSON.stringify(p.filas.slice(0, 50))}`;
+        const p = await parseArchivo(f, MAX_TEXTO_LARGO, imagenesMapa);
+        if (p.error) { fuentesResumen.push({ plataforma: plataformaLabel, nombre: f.nombre, usada: false, detalle: p.error }); continue; }
+        if (p.kind === 'texto' && p.texto) {
+          acumulado += `\n--- ${f.nombre} ---\n${p.texto}`;
+          fuentesResumen.push({ plataforma: plataformaLabel, nombre: f.nombre, usada: true, detalle: 'Leído correctamente.' });
+        } else if (p.kind === 'tabular') {
+          acumulado += `\n--- ${f.nombre} (planilla) ---\n${JSON.stringify(p.filas.slice(0, 50))}`;
+          fuentesResumen.push({ plataforma: plataformaLabel, nombre: f.nombre, usada: true, detalle: 'Leído correctamente.' });
+        }
       }
       return acumulado.slice(0, MAX_TEXTO_LARGO);
     }
-    const productoTexto = await textoDe(archivos.filter(a => a.tipo === 'documentosProducto'));
-    const briefTexto = await textoDe(archivos.filter(a => a.tipo === 'briefCampana'));
-    const specsTexto = await textoDe(archivos.filter(a => a.tipo === 'specsRetailer'));
-    const perfilTexto = await textoDe(archivos.filter(a => a.tipo === 'perfilConsumidor'));
+    const productoTexto = await textoDe(archivos.filter(a => a.tipo === 'documentosProducto'), 'Documentos del producto');
+    const briefTexto = await textoDe(archivos.filter(a => a.tipo === 'briefCampana'), 'Brief de campaña');
+    const specsTexto = await textoDe(archivos.filter(a => a.tipo === 'specsRetailer'), 'Specs de retailer');
+    const perfilTexto = await textoDe(archivos.filter(a => a.tipo === 'perfilConsumidor'), 'Perfil de consumidor');
 
     const retailers = parseRetailers(retailersObjetivo);
 
