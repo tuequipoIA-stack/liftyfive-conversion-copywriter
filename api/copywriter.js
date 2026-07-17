@@ -17,10 +17,17 @@
 const MAX_TEXTO_LARGO = 4000;
 const MAX_TEXTO_REVIEWS = 60000;
 const MAX_FILAS_TABLA = 8000;
-const MAX_REVIEWS = 200;
+// Cuantas más reviews se le pidan clasificar a Claude en una sola corrida,
+// más larga es la respuesta que tiene que generar (un ítem de clasificación
+// por review) y más chance de pasarse del maxDuration de la función
+// serverless. 110 es un techo que en la práctica da tiempo de sobra para
+// terminar dentro de los 90s configurados en vercel.json mantiendo una
+// muestra representativa.
+const MAX_REVIEWS = 110;
 const MAX_TEMAS = 8;
 const MAX_LINKS = 8;
 const LINK_TIMEOUT_MS = 12000;
+const CLAUDE_TIMEOUT_MS = 65000;
 
 /* ================= PARSERS (archivos) ================= */
 
@@ -300,11 +307,26 @@ Reglas estrictas:
 }`;
 
 async function llamarClaude(prompt, apiKey) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 12000, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: prompt }] })
-  });
+  // Timeout propio, menor al maxDuration de la función serverless. Así, si
+  // Claude se cuelga generando una respuesta muy larga, cortamos nosotros
+  // con un error entendible en vez de que Vercel mate la función y devuelva
+  // una página de error en texto plano que el frontend no puede parsear.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 8000, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: prompt }] })
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Claude tardó demasiado en responder para esta cantidad de reviews. Probá con menos reviews por corrida (por ejemplo, subiendo un archivo más chico o menos plataformas a la vez).');
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+  }
   const data = await r.json();
   if (!r.ok) throw new Error(data?.error?.message || 'Error llamando a la API de Claude.');
 
