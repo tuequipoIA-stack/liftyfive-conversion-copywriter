@@ -1,9 +1,10 @@
 // Vercel Serverless Function
 // POST /api/copywriter
 //
-// Agente E (UX Copywriter) — lee reviews reales de distintas plataformas,
-// detecta qué valoran más los clientes y genera copy de conversión anclado
-// en esos insights, por retailer o como pieza genérica para reversionar.
+// Agente E (UX Copywriter) — lee reviews reales de distintas plataformas
+// (archivos exportados Y/o links de páginas de venta), detecta qué valoran
+// más los clientes, y genera copy de conversión anclado en esos insights,
+// por retailer o como pieza genérica para reversionar.
 //
 // División de responsabilidades (mismo principio que Agentes A/F/G):
 // Claude NUNCA calcula un porcentaje. Claude solo hace dos cosas: (1)
@@ -18,8 +19,10 @@ const MAX_TEXTO_REVIEWS = 60000;
 const MAX_FILAS_TABLA = 8000;
 const MAX_REVIEWS = 200;
 const MAX_TEMAS = 8;
+const MAX_LINKS = 8;
+const LINK_TIMEOUT_MS = 12000;
 
-/* ================= PARSERS (mismos que Agentes A/F/G) ================= */
+/* ================= PARSERS (archivos) ================= */
 
 function bufferDesdeBase64(base64) {
   const data = String(base64).split(',').pop();
@@ -51,11 +54,22 @@ async function parsePDF(buffer, nombreArchivo, textCap) {
   } catch (e) { return { error: `No se pudo leer "${nombreArchivo}" como PDF: ${e.message}` }; }
 }
 
-// textCap: los documentos de contexto (brief, specs) usan MAX_TEXTO_LARGO
-// porque son texto de apoyo. Las fuentes de reviews en TXT/MD/PDF usan un
-// cap mucho más grande (MAX_TEXTO_REVIEWS) porque ahí sí son los datos
-// primarios del análisis — cortarlos a 4000 caracteres dejaría afuera la
-// mayoría de las reviews reales de un export más largo.
+// Word, PowerPoint, OpenDocument y RTF — vía officeparser (misma librería
+// para las cuatro cosas, sin dependencias nativas).
+async function parseOfficeDoc(buffer, nombreArchivo, ext, textCap) {
+  let officeParser;
+  try { officeParser = require('officeparser'); } catch (e) { return { error: 'No se pudo cargar el parser de documentos de Office.' }; }
+  try {
+    const ast = await officeParser.parseOffice(buffer, { fileType: ext });
+    const texto = typeof ast.toText === 'function' ? ast.toText() : '';
+    return { texto: (texto || '').slice(0, textCap) };
+  } catch (e) { return { error: `No se pudo leer "${nombreArchivo}" (${ext}): ${e.message}` }; }
+}
+
+// textCap: los documentos de contexto (brief, specs, producto) usan
+// MAX_TEXTO_LARGO porque son texto de apoyo. Las fuentes de reviews en
+// TXT/MD/PDF usan un cap mucho más grande (MAX_TEXTO_REVIEWS) porque ahí sí
+// son los datos primarios del análisis.
 async function parseArchivo(archivo, textCap = MAX_TEXTO_LARGO) {
   const nombre = archivo.nombre || 'archivo';
   const ext = (nombre.split('.').pop() || '').toLowerCase();
@@ -63,7 +77,59 @@ async function parseArchivo(archivo, textCap = MAX_TEXTO_LARGO) {
   if (['csv', 'xlsx', 'xls'].includes(ext)) return { kind: 'tabular', nombre, ...parseTabular(buffer, nombre) };
   if (ext === 'pdf') return { kind: 'texto', nombre, ...(await parsePDF(buffer, nombre, textCap)) };
   if (['txt', 'md', 'json'].includes(ext)) return { kind: 'texto', nombre, texto: buffer.toString('utf-8').slice(0, textCap) };
-  return { kind: 'desconocido', nombre, error: `Formato de "${nombre}" no reconocido — probá CSV, XLSX, PDF, TXT o MD.` };
+  if (['docx', 'pptx', 'odt', 'odp', 'ods', 'rtf'].includes(ext)) return { kind: 'texto', nombre, ...(await parseOfficeDoc(buffer, nombre, ext, textCap)) };
+  return { kind: 'desconocido', nombre, error: `Formato de "${nombre}" no reconocido — probá CSV, XLSX, PDF, Word, PowerPoint, TXT o MD.` };
+}
+
+/* ================= PARSER DE LINKS (páginas de venta / reseñas) ================= */
+
+function hostnameDe(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch (e) { return String(url || '').slice(0, 60); }
+}
+
+// No hay browser headless acá (función serverless liviana) — se lee el
+// HTML tal como lo devuelve el server. Funciona bien en sitios que
+// renderizan las reviews del lado del servidor (frecuente en fichas de
+// producto de retailers y marketplaces); si una página arma sus reviews
+// 100% con JavaScript del lado del cliente, puede no traer nada útil — en
+// ese caso conviene exportar las reviews como archivo en vez de pegar el link.
+async function parseLinkHTML(url, textCap) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LINK_TIMEOUT_MS);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-419,es;q=0.9'
+      }
+    });
+    if (!r.ok) return { error: `La página respondió con estado ${r.status} — puede estar bloqueando accesos automáticos.` };
+    const html = await r.text();
+    const texto = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<(br|\/p|\/div|\/li|\/tr|\/h[1-6])\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#0?39;/gi, "'")
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+    if (!texto) return { error: 'La página no devolvió contenido de texto legible.' };
+    return { texto: texto.slice(0, textCap) };
+  } catch (e) {
+    if (e.name === 'AbortError') return { error: 'La página tardó demasiado en responder (timeout de 12s).' };
+    return { error: `No se pudo leer la página: ${e.message}` };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function normalizar(s) {
@@ -174,10 +240,11 @@ function parseRetailers(texto) {
 
 /* ================= PROMPT Y LLAMADA A CLAUDE ================= */
 
-function construirPrompt({ cliente, producto, objetivo, retailers, briefTexto, specsTexto, perfilTexto, creativoBase }, reviews) {
+function construirPrompt({ cliente, producto, objetivo, retailers, briefTexto, specsTexto, perfilTexto, productoTexto, creativoBase }, reviews) {
   const bloques = [];
   bloques.push(`CLIENTE: ${cliente || 'sin nombre'}\nPRODUCTO / LÍNEA: ${producto || 'no especificado'}\nOBJETIVO DE CAMPAÑA: ${objetivo || 'no especificado'}\nRETAILERS OBJETIVO: ${JSON.stringify(retailers)}`);
 
+  if (productoTexto) bloques.push(`\n=== DOCUMENTOS DEL PRODUCTO (fichas técnicas, brand book, info oficial) ===\n${productoTexto}`);
   if (briefTexto) bloques.push(`\n=== BRIEF DE CAMPAÑA / LINEAMIENTOS DE MARCA ===\n${briefTexto}`);
   if (specsTexto) bloques.push(`\n=== SPECS DE RETAILER (si se subieron) ===\n${specsTexto}`);
   if (perfilTexto) bloques.push(`\n=== PERFIL DE CONSUMIDOR (Agente F, si se subió) ===\n${perfilTexto}`);
@@ -193,12 +260,12 @@ const SYSTEM_PROMPT = `Sos el motor de clasificación y redacción del Agente E 
 Tu trabajo tiene dos partes:
 
 PARTE 1 — CLASIFICACIÓN (etiquetado, no matemática):
-Vas a recibir una lista de reviews reales, cada una con un "id" y su plataforma de origen. Tenés que:
+Vas a recibir una lista de reviews reales, cada una con un "id" y su plataforma de origen (puede ser una tienda, un marketplace, una app, redes sociales, o el dominio de una página de venta leída directamente por link). Tenés que:
 1. Detectar como máximo 8 temas/insights recurrentes — lo que los clientes más valoran o más critican. Cada tema lleva un nombre corto y un sentimiento ("positivo", "negativo" o "neutro"). Usá lo que la gente REALMENTE dice, no categorías genéricas de manual de marketing.
 2. Para CADA review de la lista, indicar a qué tema(s) pertenece (puede ser ninguno, uno o varios). NUNCA calculés porcentajes ni conteos vos mismo — eso lo hace el sistema después, contando cuántas reviews etiquetaste con cada tema. Tu única responsabilidad acá es clasificar bien, review por review.
 
 PARTE 2 — COPY (redacción, sobre los temas que vos mismo detectaste en la Parte 1):
-Con los temas ya identificados, escribí copy de conversión para cada retailer en RETAILERS OBJETIVO (usá el "slug" de cada uno como key del objeto "copy"):
+Con los temas ya identificados — y usando también los DOCUMENTOS DEL PRODUCTO si se incluyeron, para no contradecir ningún atributo o claim oficial — escribí copy de conversión para cada retailer en RETAILERS OBJETIVO (usá el "slug" de cada uno como key del objeto "copy"):
 - "titulos_banner": EXACTAMENTE 2 títulos de banner alternativos, cada uno con el "tema_id" del tema en que se basa y una "razon" de 1 oración explicando por qué ese mensaje funciona para ese retailer y ese objetivo de campaña.
 - "brand_store_desc": una descripción de Brand Store (2-3 oraciones).
 - "titulo_imagen": un título corto para overlay de imagen (máximo 8 palabras).
@@ -209,6 +276,7 @@ Reglas estrictas:
 - El copy tiene que sonar distinto entre retailers si el tono o el comprador típico de cada uno es distinto — no repitas el mismo texto para todos.
 - Si RETAILERS OBJETIVO trae un solo elemento con slug "generico", escribí una pieza más flexible, sin nombrar un retailer puntual, pensada para reversionar después en cualquier canal.
 - Si hay un CREATIVO BASE A REVERSIONAR, tu copy nuevo tiene que partir de esa base y adaptarla — no ignorarla y escribir algo completamente distinto.
+- Si hay DOCUMENTOS DEL PRODUCTO, nunca redactes un claim que los contradiga (ej. un ingrediente, certificación o beneficio que el documento no confirma).
 - No devuelvas texto fuera del JSON. Respondé ÚNICAMENTE con un JSON válido, sin bloques de markdown, con este schema exacto:
 
 {
@@ -267,10 +335,10 @@ module.exports = async (req, res) => {
   try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
   catch (e) { res.status(400).json({ error: 'Body inválido.' }); return; }
 
-  const { cliente, producto, objetivoCampana, retailersObjetivo, creativoBase, archivos = [] } = body || {};
+  const { cliente, producto, objetivoCampana, retailersObjetivo, creativoBase, archivos = [], links = [] } = body || {};
 
   try {
-    // --- Reviews por plataforma ---
+    // --- Reviews por plataforma (archivos exportados) ---
     const tiposReviews = ['reviewsPropias', 'reviewsML', 'reviewsAmazon', 'reviewsApp', 'redesSociales'];
     let reviewsRaw = [];
     let fuentesResumen = [];
@@ -301,8 +369,30 @@ module.exports = async (req, res) => {
       fuentesResumen.push({ plataforma, nombre: archivosTipo.map(a => a.nombre).join(', '), usada: count > 0, detalle: `${count} reviews detectadas.` });
     }
 
+    // --- Reviews desde links de venta (páginas leídas en vivo) ---
+    const linksLimpios = [...new Set((Array.isArray(links) ? links : [])
+      .map(l => String(l || '').trim())
+      .filter(l => /^https?:\/\//i.test(l)))].slice(0, MAX_LINKS);
+
+    if (linksLimpios.length) {
+      const resultadosLinks = await Promise.all(linksLimpios.map(async (url) => {
+        const hostname = hostnameDe(url);
+        const parsed = await parseLinkHTML(url, MAX_TEXTO_REVIEWS);
+        return { url, hostname, parsed };
+      }));
+      for (const { url, hostname, parsed } of resultadosLinks) {
+        if (parsed.error) { fuentesResumen.push({ plataforma: hostname, nombre: url, usada: false, detalle: parsed.error }); continue; }
+        const comentarios = partirTextoEnComentarios(parsed.texto);
+        comentarios.forEach(c => { reviewsRaw.push({ texto: c, rating: null, plataforma: hostname }); });
+        fuentesResumen.push({
+          plataforma: hostname, nombre: url, usada: comentarios.length > 0,
+          detalle: comentarios.length ? `${comentarios.length} fragmentos de texto leídos de la página.` : 'La página respondió pero no se detectó texto aprovechable (probablemente carga las reviews con JavaScript del lado del cliente).'
+        });
+      }
+    }
+
     if (!reviewsRaw.length) {
-      res.status(400).json({ error: 'Necesito al menos una fuente de reviews (tienda propia, Mercado Libre, Amazon, app o redes) para poder identificar insights reales — sin eso no hay de dónde sacar el mensaje.' });
+      res.status(400).json({ error: 'Necesito al menos una fuente de reviews — un archivo exportado (tienda propia, Mercado Libre, Amazon, app o redes) o un link a una página de venta — para poder identificar insights reales. Sin eso no hay de dónde sacar el mensaje.' });
       return;
     }
 
@@ -324,13 +414,14 @@ module.exports = async (req, res) => {
       }
       return acumulado.slice(0, MAX_TEXTO_LARGO);
     }
+    const productoTexto = await textoDe(archivos.filter(a => a.tipo === 'documentosProducto'));
     const briefTexto = await textoDe(archivos.filter(a => a.tipo === 'briefCampana'));
     const specsTexto = await textoDe(archivos.filter(a => a.tipo === 'specsRetailer'));
     const perfilTexto = await textoDe(archivos.filter(a => a.tipo === 'perfilConsumidor'));
 
     const retailers = parseRetailers(retailersObjetivo);
 
-    const prompt = construirPrompt({ cliente, producto, objetivo: objetivoCampana, retailers, briefTexto, specsTexto, perfilTexto, creativoBase }, reviews);
+    const prompt = construirPrompt({ cliente, producto, objetivo: objetivoCampana, retailers, briefTexto, specsTexto, perfilTexto, productoTexto, creativoBase }, reviews);
     const resultado = await llamarClaude(prompt, apiKey);
 
     // --- Validar temas y calcular conteos/porcentajes de forma determinística ---
