@@ -183,14 +183,14 @@
 
   <div class="card">
     <h3>Documentos y reviews</h3>
-    <div class="card-sub">Cualquier formato: CSV, XLSX, PDF, Word, PowerPoint, TXT, MD, ODT, ODP, ODS o RTF. Todo opcional salvo tener al menos una fuente real de reviews (archivo o link) — sin eso el agente no tiene de dónde sacar el insight real. Límite: 3MB por archivo y 3MB combinados entre todos — si tenés archivos más pesados, recortalos o subilos en corridas separadas.</div>
+    <div class="card-sub">Cualquier formato: CSV, XLSX, PDF, Word (.docx), PowerPoint, TXT, MD, ODT, ODP, ODS, RTF, o directamente una foto o captura de pantalla (JPG, PNG, WEBP, GIF) — el agente la lee con IA y transcribe el texto que encuentre, sea una reseña, una ficha técnica fotografiada o lo que sea. (Los .doc viejos de Word 97-2003 no se pueden leer directo — convertilos a .docx o PDF antes de subir). Todo opcional salvo tener al menos una fuente real de reviews (archivo, imagen o link) — sin eso el agente no tiene de dónde sacar el insight real. Límite: 3MB por archivo y 3MB combinados entre todos — si tenés archivos más pesados, recortalos o subilos en corridas separadas.</div>
     <div class="fuente-grid">
       <div class="fuente-block">
         <div class="fuente-top"><h4>Documentos del producto</h4><span class="fuente-tag recomendado">Recomendado</span></div>
         <div class="fuente-sub">Fichas técnicas, brand book, info oficial del producto — en cualquier formato. El agente lo usa como contexto para no contradecir ningún claim al redactar el copy.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-documentosProducto">Adjuntar archivo(s)</label>
-          <input type="file" id="file-documentosProducto" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'documentosProducto')">
+          <input type="file" id="file-documentosProducto" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'documentosProducto')">
           <span class="file-name" id="name-documentosProducto"></span>
         </div>
       </div>
@@ -199,7 +199,7 @@
         <div class="fuente-sub">Export con el texto de cada review (y rating si lo tenés). Es la fuente más directa — el cliente que reseña ahí ya te compró a vos.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-reviewsPropias">Adjuntar archivo(s)</label>
-          <input type="file" id="file-reviewsPropias" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'reviewsPropias')">
+          <input type="file" id="file-reviewsPropias" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'reviewsPropias')">
           <span class="file-name" id="name-reviewsPropias"></span>
         </div>
       </div>
@@ -208,7 +208,7 @@
         <div class="fuente-sub">Export de las reviews de la publicación. También sirve un TXT con una review pegada por línea.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-reviewsML">Adjuntar archivo(s)</label>
-          <input type="file" id="file-reviewsML" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'reviewsML')">
+          <input type="file" id="file-reviewsML" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'reviewsML')">
           <span class="file-name" id="name-reviewsML"></span>
         </div>
       </div>
@@ -217,7 +217,7 @@
         <div class="fuente-sub">Mismo criterio que Mercado Libre: export o texto de las reviews del producto.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-reviewsAmazon">Adjuntar archivo(s)</label>
-          <input type="file" id="file-reviewsAmazon" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'reviewsAmazon')">
+          <input type="file" id="file-reviewsAmazon" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'reviewsAmazon')">
           <span class="file-name" id="name-reviewsAmazon"></span>
         </div>
       </div>
@@ -226,7 +226,7 @@
         <div class="fuente-sub">Solo si el producto o la marca tiene una app propia con reviews de usuarios (App Store / Google Play).</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-reviewsApp">Adjuntar archivo(s)</label>
-          <input type="file" id="file-reviewsApp" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'reviewsApp')">
+          <input type="file" id="file-reviewsApp" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'reviewsApp')">
           <span class="file-name" id="name-reviewsApp"></span>
         </div>
       </div>
@@ -235,7 +235,7 @@
         <div class="fuente-sub">Comentarios en posts orgánicos o pauta — a veces aparecen menciones espontáneas que no están en ninguna review formal.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-redesSociales">Adjuntar archivo(s)</label>
-          <input type="file" id="file-redesSociales" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'redesSociales')">
+          <input type="file" id="file-redesSociales" multiple accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'redesSociales')">
           <span class="file-name" id="name-redesSociales"></span>
         </div>
       </div>
@@ -244,7 +244,7 @@
         <div class="fuente-sub">Tono de voz, mensajes obligatorios o prohibidos (ej. claims regulados). Sin esto el agente usa un tono neutro por defecto.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-briefCampana">Adjuntar archivo</label>
-          <input type="file" id="file-briefCampana" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'briefCampana')">
+          <input type="file" id="file-briefCampana" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'briefCampana')">
           <span class="file-name" id="name-briefCampana"></span>
         </div>
       </div>
@@ -253,7 +253,7 @@
         <div class="fuente-sub">Dimensiones de banner, límite de caracteres, guidelines de Brand Store de tu cuenta. Sin esto el agente usa formatos estándar genéricos.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-specsRetailer">Adjuntar archivo</label>
-          <input type="file" id="file-specsRetailer" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'specsRetailer')">
+          <input type="file" id="file-specsRetailer" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'specsRetailer')">
           <span class="file-name" id="name-specsRetailer"></span>
         </div>
       </div>
@@ -262,7 +262,7 @@
         <div class="fuente-sub">Si ya corriste Agente F para este cliente, subí acá el perfil exportado para que el copy se alinee al tono del público objetivo. Por ahora la reutilización automática entre agentes todavía no está conectada — hay que subir el archivo directo.</div>
         <div class="file-btn-row">
           <label class="btn secondary" for="file-perfilConsumidor">Adjuntar archivo</label>
-          <input type="file" id="file-perfilConsumidor" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf" onchange="cargarArchivos(event,'perfilConsumidor')">
+          <input type="file" id="file-perfilConsumidor" accept=".csv,.xlsx,.xls,.pdf,.txt,.md,.docx,.pptx,.odt,.odp,.ods,.rtf,.doc,.jpg,.jpeg,.png,.webp,.gif" onchange="cargarArchivos(event,'perfilConsumidor')">
           <span class="file-name" id="name-perfilConsumidor"></span>
         </div>
       </div>
@@ -369,7 +369,7 @@ async function procesar(){
   const btn = document.getElementById('btn-procesar');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Leyendo fuentes y armando el copy…';
-  document.getElementById('status-area').innerHTML = '<div class="status info">Leyendo documentos, links y reviews, clasificando y redactando copy. Puede tardar hasta un minuto o dos si hay links de por medio.</div>';
+  document.getElementById('status-area').innerHTML = '<div class="status info">Leyendo documentos, imágenes, links y reviews, clasificando y redactando copy. Puede tardar hasta dos minutos si hay imágenes o links de por medio.</div>';
   document.getElementById('resultado-area').innerHTML = '';
 
   const archivos = [];

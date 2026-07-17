@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/copywriter.js": {
-      "maxDuration": 90
+      "maxDuration": 150
     }
   }
 }
