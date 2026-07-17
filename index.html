@@ -403,6 +403,8 @@ async function procesar(){
       let mensaje;
       if(r.status === 413){
         mensaje = 'Los archivos que subiste pesan demasiado en conjunto para esta corrida (el servidor tiene un límite de tamaño). Sacá algún archivo pesado, recortalo, o subilo en una corrida aparte.';
+      } else if(r.status === 504){
+        mensaje = 'La corrida tardó más de lo permitido (probablemente por la cantidad de reviews a clasificar). Probá de nuevo con menos reviews por corrida, o dividiendo las fuentes en corridas separadas.';
       } else {
         mensaje = `El servidor respondió con un error inesperado (código ${r.status}) que no pude interpretar. Probá de nuevo en unos minutos.`;
       }
