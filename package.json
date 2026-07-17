@@ -1,8 +1,8 @@
 {
   "name": "liftyfive-conversion-copywriter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Agente E (UX Copywriter) de LiftyFive — copy de conversión anclado en insights reales de reviews de distintas plataformas, con Claude API.",
+  "description": "Agente E (UX Copywriter) de LiftyFive — copy de conversión anclado en insights reales de reviews de distintas plataformas y de links de venta, con Claude API.",
   "engines": { "node": ">=18" },
-  "dependencies": { "xlsx": "^0.18.5", "pdf-parse": "^1.1.1" }
+  "dependencies": { "xlsx": "^0.18.5", "pdf-parse": "^1.1.1", "officeparser": "^7.3.0" }
 }
