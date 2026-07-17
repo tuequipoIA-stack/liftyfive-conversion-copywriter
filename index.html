@@ -183,7 +183,7 @@
 
   <div class="card">
     <h3>Documentos y reviews</h3>
-    <div class="card-sub">Cualquier formato: CSV, XLSX, PDF, Word, PowerPoint, TXT, MD, ODT, ODP, ODS o RTF. Todo opcional salvo tener al menos una fuente real de reviews (archivo o link) — sin eso el agente no tiene de dónde sacar el insight real.</div>
+    <div class="card-sub">Cualquier formato: CSV, XLSX, PDF, Word, PowerPoint, TXT, MD, ODT, ODP, ODS o RTF. Todo opcional salvo tener al menos una fuente real de reviews (archivo o link) — sin eso el agente no tiene de dónde sacar el insight real. Límite: 3MB por archivo y 3MB combinados entre todos — si tenés archivos más pesados, recortalos o subilos en corridas separadas.</div>
     <div class="fuente-grid">
       <div class="fuente-block">
         <div class="fuente-top"><h4>Documentos del producto</h4><span class="fuente-tag recomendado">Recomendado</span></div>
@@ -279,16 +279,28 @@
 const archivosCargados = {};
 const linksCargados = [];
 
+// Vercel limita el body de las funciones serverless a 4.5MB. Como los
+// archivos viajan codificados en base64 (~33% más pesados que el original),
+// hay que frenar bastante antes de ese límite. Se valida por archivo y
+// también el total acumulado entre todas las categorías.
+const MAX_MB_POR_ARCHIVO = 3;
+const MAX_MB_TOTAL = 3;
+let bytesCargadosTotal = 0;
+
 function cargarArchivos(event, tipo){
   const files = Array.from(event.target.files || []);
   if(!files.length) return;
-  const maxMB = 6;
   const validos = [];
   for(const file of files){
-    if(file.size > maxMB * 1024 * 1024){
-      alert(`"${file.name}" supera ${maxMB}MB. Probá con un recorte más chico.`);
+    if(file.size > MAX_MB_POR_ARCHIVO * 1024 * 1024){
+      alert(`"${file.name}" pesa más de ${MAX_MB_POR_ARCHIVO}MB. Probá con un archivo más chico o un recorte (por ejemplo, menos filas o páginas).`);
       continue;
     }
+    if(bytesCargadosTotal + file.size > MAX_MB_TOTAL * 1024 * 1024){
+      alert(`No puedo sumar "${file.name}": entre todos los archivos ya cargados y este, superarías el límite de ${MAX_MB_TOTAL}MB combinados que acepta el servidor. Sacá algún archivo pesado o recargá la página para empezar de nuevo con archivos más livianos.`);
+      continue;
+    }
+    bytesCargadosTotal += file.size;
     validos.push(file);
   }
   if(!validos.length) return;
@@ -379,9 +391,23 @@ async function procesar(){
     const r = await fetch('/api/copywriter', {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
-    const data = await r.json();
 
-    if(!r.ok){
+    const raw = await r.text();
+    let data = null;
+    try{ data = raw ? JSON.parse(raw) : {}; } catch(parseErr){ data = null; }
+
+    if(data === null){
+      // El servidor no devolvió JSON — típicamente porque el body superó el
+      // límite de tamaño de la plataforma (Vercel corta en 4.5MB) y devuelve
+      // una página de error en texto plano, no nuestro formato de error.
+      let mensaje;
+      if(r.status === 413){
+        mensaje = 'Los archivos que subiste pesan demasiado en conjunto para esta corrida (el servidor tiene un límite de tamaño). Sacá algún archivo pesado, recortalo, o subilo en una corrida aparte.';
+      } else {
+        mensaje = `El servidor respondió con un error inesperado (código ${r.status}) que no pude interpretar. Probá de nuevo en unos minutos.`;
+      }
+      document.getElementById('status-area').innerHTML = `<div class="status error">${mensaje}</div>`;
+    } else if(!r.ok){
       document.getElementById('status-area').innerHTML = `<div class="status error">${data.error || 'Error generando el copy.'}</div>`;
     } else {
       document.getElementById('status-area').innerHTML = '<div class="status ok">Listo. Copy generado.</div>';
